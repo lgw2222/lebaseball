@@ -546,14 +546,46 @@ function initWeekBrowser() {
   if(!weekData[0]) loadWeek(0);
 }
 
-// Unregister any old service workers that may be caching broken files
+// ── PWA INSTALL ──────────────────────────────────────────────────────────
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').style.display='flex';
+});
+function installApp(){
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(()=>{ deferredPrompt=null; dismissInstall(); });
+}
+function dismissInstall(){
+  document.getElementById('installBanner').style.display='none';
+}
+
+// Unregister old broken service workers, then register fresh one
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.getRegistrations().then(regs=>{
-    regs.forEach(r=>r.unregister());
-  });
+  navigator.serviceWorker.getRegistrations().then(regs=>{ regs.forEach(r=>r.unregister()); });
+  if('caches' in window){ caches.keys().then(keys=>keys.forEach(k=>caches.delete(k))); }
+  window.addEventListener('load',()=>{ setTimeout(()=>navigator.serviceWorker.register('sw.js').catch(()=>{}), 3000); });
 }
 
 loadAll();
 </script>
+
+<!-- Install Banner -->
+<div id="installBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:linear-gradient(90deg,#080f1a,#132236);border-top:2px solid #c62828;padding:14px 20px;z-index:9999;align-items:center;gap:14px;justify-content:space-between;box-shadow:0 -6px 24px rgba(0,0,0,.5);">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <img src="icon-192.png" style="width:42px;height:42px;border-radius:8px;">
+    <div>
+      <div style="font-family:'Oswald',sans-serif;font-weight:600;font-size:.95rem;color:#f5f0e8;">Install LeBaseball</div>
+      <div style="color:#7a94b0;font-size:.76rem;">Add to your home screen for quick access</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;flex-shrink:0;">
+    <button onclick="installApp()" style="background:#c62828;border:none;color:white;padding:9px 18px;border-radius:7px;font-family:'Oswald',sans-serif;font-size:.8rem;letter-spacing:1px;cursor:pointer;">Install App</button>
+    <button onclick="dismissInstall()" style="background:transparent;border:1px solid #1e3550;color:#7a94b0;padding:9px 12px;border-radius:7px;font-size:.85rem;cursor:pointer;">✕</button>
+  </div>
+</div>
+
 </body>
 </html>
